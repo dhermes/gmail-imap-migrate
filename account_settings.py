@@ -19,3 +19,5 @@ OLD_USERNAME = 'username@example.com'
 OLD_PASSWORD = ''
 NEW_USERNAME = 'username@example.com'
 NEW_PASSWORD = ''
+
+CHATS_NEW_LABEL = 'Old Account Chats'

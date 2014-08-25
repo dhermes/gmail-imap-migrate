@@ -93,7 +93,7 @@ def get_all_folder_data(server, all_folders):
   folder_data_fi = os.path.join(CURR_DIR, constants.OLD_DATA_DIR,
                                 constants.FOLDER_DATA_FI)
   if os.path.exists(folder_data_fi):
-    raise OSError('Folder data file already exists.')
+    raise OSError('Folder data file: %s already exists.' % folder_data_fi)
 
   msg_to_folder = {}
   folder_data = {}

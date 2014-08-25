@@ -23,6 +23,12 @@ your account.
 
 This text borrowed from [`account_settings.py`][3].
 
+After doing so, run:
+- `./step1_make_new_labels.py`
+- `./step2_make_data_folders.py`
+- `./step3_get_old_message_info.py`
+- `./step4_move_old_data.py`
+
 #### Thing to Notice
 
 If you use this tool and update `account_settings.py` with your own data,
