@@ -18,7 +18,7 @@ RELABEL_MAP = {
 CURR_DIR = os.path.dirname(__file__)
 MIGRATION_PROGRESS_FI = os.path.join(CURR_DIR, constants.NEW_DATA_DIR,
                                      constants.MIGRATION_PROGRESS_FI)
-PRINT_INTERVAL = 500
+PRINT_INTERVAL = 1000
 
 
 def store_migration_progress(migration_progress):
@@ -66,13 +66,18 @@ def add_msg_to_new_account(msg_data_dict, folder_new, folder_uid,
     server_new.copy([new_folder_msg_id], other_folder)
 
 
-def migrate(folder_data, migration_progress, server_old, server_new):
+def migrate(folder_data, skipped_folders, migration_progress,
+            server_old, server_new):
   total_msgs = sum([len(val) for val in folder_data.values()
                     if val is not None])
   count = 0
   for folder, gmail_msg_dict in folder_data.iteritems():
-    print 'Beginning', folder
-    list_of_completed = migration_progress.setdefault(folder, [])
+    if folder in skipped_folders:
+      print 'Skipping', folder, 'since in skipped folders.'
+      continue
+    else:
+      print 'Beginning', folder
+      list_of_completed = migration_progress.setdefault(folder, [])
 
     # Open folders for files.
     server_old.select_folder(folder, readonly=True)
@@ -80,6 +85,9 @@ def migrate(folder_data, migration_progress, server_old, server_new):
     if folder in RELABEL_MAP:
       print 'Re-labeling new folder.'
       folder_new = RELABEL_MAP[folder]
+      if not server_new.folder_exists(folder_new):
+        server_new.create_folder(folder_new)
+        print 'Created', folder_new
 
     new_folder_info = server_new.select_folder(folder_new)
     folder_uid = new_folder_info['UIDVALIDITY']
@@ -87,8 +95,7 @@ def migrate(folder_data, migration_progress, server_old, server_new):
     for gmail_id, msg_data_dict in gmail_msg_dict.iteritems():
       count += 1
       if count % PRINT_INTERVAL == 0:
-        print 'Folder: %s, Gmail ID: %s, %d / %d' % (folder, gmail_id,
-                                                     count, total_msgs)
+        print 'Folder: %s, %d / %d' % (folder, count, total_msgs)
 
       if gmail_id in list_of_completed:
         continue
@@ -105,6 +112,11 @@ def main():
   with open(folder_data_fi, 'r') as fh:
     folder_data = json.load(fh)
 
+  skipped_folders_fi = os.path.join(CURR_DIR, constants.OLD_DATA_DIR,
+                                    constants.SKIPPED_FOLDERS_FI)
+  with open(skipped_folders_fi, 'r') as fh:
+    skipped_folders = json.load(fh)
+
   migration_progress = read_migration_progress()
 
   # Log-in to both old and new servers.
@@ -112,7 +124,8 @@ def main():
                                      account_settings.OLD_PASSWORD)
   server_new = utils.login_to_server(account_settings.NEW_USERNAME,
                                      account_settings.NEW_PASSWORD)
-  migrate(folder_data, migration_progress, server_old, server_new)
+  migrate(folder_data, skipped_folders, migration_progress,
+          server_old, server_new)
 
   # Log-out of both servers.
   server_old.logout()

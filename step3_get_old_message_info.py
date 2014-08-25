@@ -16,6 +16,8 @@ import utils
 # we expect them to be the most common.
 SPECIAL_FOLDERS = ('[Gmail]/All Mail', 'INBOX')
 CURR_DIR = os.path.dirname(__file__)
+FETCH_BLOCK_SIZE = 4000
+SKIPPED_SENTINEL = object()
 
 
 def save_old_folders(server):
@@ -47,6 +49,26 @@ def save_old_folders(server):
   return all_folders
 
 
+def get_folder_contents(server, folder_msg_ids):
+  num_folder_msg_ids = len(folder_msg_ids)
+
+  result = {}
+  for index in xrange(0, num_folder_msg_ids, FETCH_BLOCK_SIZE):
+    begin_item = index + 1
+    end_item = min(index + FETCH_BLOCK_SIZE, num_folder_msg_ids)
+    print 'Fetching %d through %d of %d.' % (begin_item, end_item,
+                                             num_folder_msg_ids)
+
+    msg_ids_slice = folder_msg_ids[index:index + FETCH_BLOCK_SIZE]
+    folder_msg_contents = server.fetch(
+        msg_ids_slice, [constants.GMAIL_ID_FIELD, constants.MSG_ID_FIELD])
+    if sorted(folder_msg_contents.keys()) != sorted(msg_ids_slice):
+      raise ValueError('Keys retrieved differ from those requested.')
+    result.update(folder_msg_contents)
+
+  return result
+
+
 def get_current_folder_data(server, folder, msg_to_folder, folder_data):
   current_folder_data = {}
 
@@ -56,14 +78,13 @@ def get_current_folder_data(server, folder, msg_to_folder, folder_data):
   except imaplib.IMAP4.error as err:
     print 'Folder', folder, 'does not exist'
     print 'Error:', err
-    return
+    return SKIPPED_SENTINEL
 
   print 'Getting folder local message IDs'
   folder_msg_ids = server.search()
   print 'Retrieved %d message IDs.' % len(folder_msg_ids)
   print 'Getting all "Message-ID" headers and Gmail Message IDs.'
-  folder_msg_contents = server.fetch(
-      folder_msg_ids, [constants.GMAIL_ID_FIELD, constants.MSG_ID_FIELD])
+  folder_msg_contents = get_folder_contents(server, folder_msg_ids)
 
   print 'Adding message data to dictionary'
   for folder_msg_id, msg_dict in folder_msg_contents.iteritems():
@@ -90,6 +111,12 @@ def get_current_folder_data(server, folder, msg_to_folder, folder_data):
 
 
 def get_all_folder_data(server, all_folders):
+  skipped_folders_fi = os.path.join(CURR_DIR, constants.OLD_DATA_DIR,
+                                    constants.SKIPPED_FOLDERS_FI)
+  if os.path.exists(skipped_folders_fi):
+    raise OSError('Skipped foldersfile: %s already exists.' %
+                  skipped_folders_fi)
+
   folder_data_fi = os.path.join(CURR_DIR, constants.OLD_DATA_DIR,
                                 constants.FOLDER_DATA_FI)
   if os.path.exists(folder_data_fi):
@@ -97,12 +124,23 @@ def get_all_folder_data(server, all_folders):
 
   msg_to_folder = {}
   folder_data = {}
+  skipped_folders = []
   for folder in all_folders:
     print '=' * 70
     print 'Beginning folder:', folder
     current_folder_data = get_current_folder_data(server, folder,
                                                   msg_to_folder, folder_data)
-    folder_data[folder] = current_folder_data
+    if current_folder_data is SKIPPED_SENTINEL:
+      skipped_folders.append(folder)
+    else:
+      folder_data[folder] = current_folder_data
+
+  print '=' * 70
+
+  print 'Saving', skipped_folders_fi
+  with open(skipped_folders_fi, 'w') as fh:
+    json.dump(skipped_folders, fh)
+  print 'Saved', skipped_folders_fi
 
   print '=' * 70
 

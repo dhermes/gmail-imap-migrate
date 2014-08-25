@@ -6,6 +6,7 @@ OLD_DATA_DIR = 'old_data'
 NEW_DATA_DIR = 'new_data'
 ALL_FOLDERS_FI = 'all_folders.json'
 FOLDER_DATA_FI = 'folder_data.json'
+SKIPPED_FOLDERS_FI = 'skipped_folders.json'
 MIGRATION_PROGRESS_FI = 'migration_progress.json'
 
 GMAIL_ID_FIELD = 'X-GM-MSGID'
