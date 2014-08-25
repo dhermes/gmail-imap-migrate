@@ -4,6 +4,8 @@ SSL = True
 
 OLD_DATA_DIR = 'old_data'
 NEW_DATA_DIR = 'new_data'
+ALL_FOLDERS_FI = 'all_folders.json'
+FOLDER_DATA_FI = 'folder_data.json'
 
 GMAIL_ID_FIELD = 'X-GM-MSGID'
 FLAGS_FIELD = 'FLAGS'
